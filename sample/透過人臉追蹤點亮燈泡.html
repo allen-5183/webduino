@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>臉色發青就開燈(人臉追蹤、顏色追蹤 )</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+    <!-- <script src="https://webduino.io/components/webduino-js/dist/webduino-all.min.js"></script> -->
+    <!-- <script src="https://blockly.webduino.io/webduino-blockly.js"></script> -->
+    <!-- <script src="https://blockly.webduino.io/lib/runtime.min.js"></script> -->
+    <script src="js/tracking.js"></script>
+    <!-- <script src="https://blockly.webduino.io/lib/tracking-min.js"></script> -->
+    <!-- <script src="https://blockly.webduino.io/lib/face-min.js"></script> -->
+    <style>
+        #demo {
+            position: relative;
+            width: 400px;
+            height: 300px;
+        }
+        
+        #demo-video {
+            position: absolute;
+            z-index: 1;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #demo div {
+            position: absolute;
+            z-index: 2;
+        }
+    </style>
+
+    <script>
+        $(function() {
+            var track = {};
+            var $demo = $('#demo');
+            var led;
+
+            track.myTracker = new tracking.ObjectTracker("face");
+            track.myTracker.setInitialScale(4);
+            track.myTracker.setStepSize(0.5);
+            track.myTracker.setEdgesDensity(0.1);
+
+            track.trackerTask = tracking.track("#demo-video", track.myTracker, {
+                camera: true
+            });
+
+            boardReady({
+                device: 'evkG'
+            }, function(board) {
+
+                board.systemReset();
+                board.samplingInterval = 250;
+                led = getLed(board, 10);
+
+                track.myTracker.on("track", function(event) {
+                    if (event.data.length === 0) {
+                        $('#demo div').remove(); //如果沒偵測到人臉，移除所有自動產生的追蹤方框
+                    } else {
+                        $('#demo div').remove(); //一開始搜尋到人臉時，先清空對應的追蹤方框
+                        var divLength = event.data.length; //獲取人臉數量
+                        event.data.forEach(function(e, i) {
+                            if ($('#demo .div' + i).length === 0) {
+                                $('#demo').append('<div class="div' + i + '"></div>'); //產生對應的追蹤方框
+                            }
+                            //設定追蹤方框樣式
+                            $('#demo .div' + i).css({
+                                'border-width': '3px',
+                                'border-style': 'solid',
+                                'border-color': '#f00',
+                                'left': e.x,
+                                'top': e.y,
+                                'width': e.width,
+                                'height': e.height
+                            });
+                            //設定超過中線會亮燈
+                            if (e.x > (180 - e.width / 2)) {
+                                led.on();
+                            } else {
+                                led.off();
+                            }
+                        });
+                    }
+                });
+
+            });
+        });
+    </script>
+
+</head>
+
+<body>
+    <div id="demo">
+        <video id="demo-video" preload="" autoplay="" loop="" muted="" controls=""></video>
+        <!-- <canvas id="demo-area-08-canvas"></canvas> -->
+    </div>
+</body>
+
+</html>
